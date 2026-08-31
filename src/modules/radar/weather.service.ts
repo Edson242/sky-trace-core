@@ -8,7 +8,6 @@ interface CacheEntry {
   condition: string;
 }
 
-// Dicionário em memória: Chave é o ID do voo, Valor é o clima em cache
 const WEATHER_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
 
@@ -16,7 +15,6 @@ export async function evaluateFlightRisk(flightId: string, lat: number, lng: num
   const now = Date.now();
   const cached = WEATHER_CACHE.get(flightId);
 
-  // Retorna do cache se estiver dentro da janela de 3 minutos
   if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
     return { threatLevel: cached.threatLevel, apiCalled: false, windSpeed: cached.windSpeed, condition: cached.condition };
   }
@@ -24,23 +22,20 @@ export async function evaluateFlightRisk(flightId: string, lat: number, lng: num
   try {
     const apiKey = process.env.OPENWEATHER_API_KEY;
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`;
-    
+
     const response = await axios.get(url);
-    
-    // Converte vento de m/s (padrão da API) para km/h
-    const windSpeedKmH = response.data.wind.speed * 3.6; 
+
+    const windSpeedKmH = response.data.wind.speed * 3.6;
     const condition = response.data.weather[0].main.toUpperCase(); // Ex: CLEAR, RAIN, THUNDERSTORM
 
     let threat: ThreatLevel = 'SAFE';
 
-    // Regras de Risco Ambiental
     if (windSpeedKmH > 80 || condition === 'THUNDERSTORM' || condition === 'TORNADO') {
       threat = 'CRITICAL';
     } else if (windSpeedKmH > 50 || condition === 'RAIN' || condition === 'SNOW') {
       threat = 'WARNING';
     }
 
-    // Salva no cache
     WEATHER_CACHE.set(flightId, { timestamp: now, threatLevel: threat, windSpeed: windSpeedKmH, condition });
 
     return { threatLevel: threat, apiCalled: true, windSpeed: windSpeedKmH, condition };

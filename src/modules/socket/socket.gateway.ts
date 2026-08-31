@@ -12,7 +12,6 @@ export function initializeSocketGateway(io: Server): void {
       console.log(`[Socket] Operador solicitou detalhes do voo ${data.flightId}`);
     });
 
-    // Usando a interface RouteDeviationPayload
     socket.on('issue_route_deviation', (data: RouteDeviationPayload): void => {
       console.log(`[ALERTA TÁTICO] Desvio emitido para ${data.flightId}. Motivo: ${data.reason}`);
       io.emit('tactical_update', { message: `Voo ${data.flightId} desviado.` });

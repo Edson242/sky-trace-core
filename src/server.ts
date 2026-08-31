@@ -4,7 +4,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeSocketGateway } from './modules/socket/socket.gateway';
-// Importamos os contadores recém-criados
 import {
   startRadarEngine,
   weatherApiCallsToday,
@@ -34,7 +33,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'SkyTrace API is running', timestamp: new Date().toISOString() });
 });
 
-// NOVA ROTA: Consumo de APIs
 app.get('/api/metrics', (req, res) => {
   res.json({
     openWeather: {
@@ -43,8 +41,6 @@ app.get('/api/metrics', (req, res) => {
       percentage: ((weatherApiCallsToday / MAX_WEATHER_CALLS) * 100).toFixed(2)
     },
     openSky: {
-      // Fonte real: header X-Rate-Limit-Remaining devolvido pela própria OpenSky a cada chamada.
-      // null até a primeira chamada bem-sucedida do ciclo do radar.
       creditsRemaining: openSkyCreditsRemaining,
       max: MAX_OPENSKY_CALLS,
       used: openSkyCreditsRemaining !== null ? MAX_OPENSKY_CALLS - openSkyCreditsRemaining : null,

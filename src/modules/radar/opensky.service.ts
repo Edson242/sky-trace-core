@@ -2,17 +2,15 @@ import axios from 'axios';
 import { Flight } from '../socket/socket.types';
 
 const BRAZIL_BOX = {
-  lamin: -33.7, 
-  lamax: 5.2,   
-  lomin: -73.9, 
-  lomax: -34.7  
+  lamin: -33.7,
+  lamax: 5.2,
+  lomin: -73.9,
+  lomax: -34.7
 };
 
 let accessToken: string | null = null;
 let tokenExpiresAt: number = 0;
 
-// Créditos restantes informados pela própria OpenSky no header X-Rate-Limit-Remaining
-// (fonte real de consumo — substitui um contador local que nunca soubemos calibrar certo)
 export let openSkyCreditsRemaining: number | null = null;
 
 async function getAccessToken(): Promise<string | null> {
@@ -34,7 +32,7 @@ async function getAccessToken(): Promise<string | null> {
     );
 
     accessToken = response.data.access_token;
-    const expiresIn = response.data.expires_in || 1800; 
+    const expiresIn = response.data.expires_in || 1800;
     tokenExpiresAt = Date.now() + (expiresIn * 1000);
 
     console.log('✅ [OpenSky Auth] Novo Access Token gerado com sucesso.');
@@ -50,9 +48,8 @@ export async function fetchRealFlights(): Promise<Flight[]> {
     const token = await getAccessToken();
     if (!token) throw new Error("Falha na autenticação OAuth2");
 
-    // ADICIONAMOS O &extended=1 NO FINAL DA URL
     const url = `https://opensky-network.org/api/states/all?lamin=${BRAZIL_BOX.lamin}&lamax=${BRAZIL_BOX.lamax}&lomin=${BRAZIL_BOX.lomin}&lomax=${BRAZIL_BOX.lomax}&extended=1`;
-    
+
     const response = await axios.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -67,7 +64,7 @@ export async function fetchRealFlights(): Promise<Flight[]> {
     const allFlights = response.data.states || [];
 
     return allFlights
-      .filter((state: any[]) => state[2] === 'Brazil' && state[8] === false) 
+      .filter((state: any[]) => state[2] === 'Brazil' && state[8] === false)
       .map((state: any[]) => ({
         id: state[1] ? state[1].trim() : 'UNKNOWN',
         originCountry: state[2],
@@ -77,12 +74,12 @@ export async function fetchRealFlights(): Promise<Flight[]> {
         velocity: state[9] || 0,
         heading: state[10] || 0,
         threatLevel: 'SAFE',
-        squawk: state[14] || null, // Mapeamento do Squawk
-        category: state[17] || 0     // Mapeamento da Categoria
+        squawk: state[14] || null,
+        category: state[17] || 0
       }));
 
   } catch (error: any) {
     console.error('❌ [OpenSky] Erro ao buscar voos reais:', error.response?.data || error.message);
-    return []; 
+    return [];
   }
 }

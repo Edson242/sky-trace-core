@@ -4,17 +4,14 @@ import { Flight, RadarUpdatePayload, ThreatLevel } from '../socket/socket.types'
 import { fetchRealFlights } from './opensky.service';
 import { evaluateFlightRisk } from './weather.service';
 import { db } from '../../config/prisma/db';
+import { DADOS_MOCKADOS } from './mockData';
 
-const USE_REAL_DATA: boolean = true;
+const USE_REAL_DATA: boolean = process.env.DADOS_MOCKADOS !== 'TRUE';
 
-// Adicionamos o "export" para ler essas variáveis fora do arquivo
-// Sem contador local para OpenSky: o consumo real vem do header X-Rate-Limit-Remaining (ver opensky.service.ts)
 export let weatherApiCallsToday: number = 0;
 export const MAX_WEATHER_CALLS: number = 1000;
-export const MAX_OPENSKY_CALLS: number = 4000; // Limite diário padrão para contas autenticadas
+export const MAX_OPENSKY_CALLS: number = 4000;
 
-// Último estado de ameaça conhecido por voo — usado para só gravar auditoria quando o estado MUDA
-// (evita gravar uma linha nova a cada tick de 10s enquanto o voo permanece na mesma condição)
 const lastThreatLevel = new Map<string, ThreatLevel>();
 
 export function startRadarEngine(io: Server): void {
@@ -27,18 +24,20 @@ export function startRadarEngine(io: Server): void {
 
     if (USE_REAL_DATA) {
       flights = await fetchRealFlights();
+    } else {
+      flights = JSON.parse(JSON.stringify(DADOS_MOCKADOS));
     }
 
     await Promise.all(flights.map(async (flight) => {
       const risk = await evaluateFlightRisk(flight.id, flight.lat, flight.lng);
-      flight.threatLevel = risk.threatLevel;
+      flight.threatLevel = flight.squawk === '7700' ? 'CRITICAL' : risk.threatLevel;
 
       if (risk.apiCalled) {
-        weatherApiCallsToday++; // Incrementa o uso da OpenWeather (sem contador direto disponível no plano free)
+        weatherApiCallsToday++;
       }
 
       const previousThreatLevel = lastThreatLevel.get(flight.id) ?? 'SAFE';
-      if (flight.threatLevel === previousThreatLevel) return; // sem mudança de estado, não grava de novo
+      if (flight.threatLevel === previousThreatLevel) return;
 
       lastThreatLevel.set(flight.id, flight.threatLevel);
 
