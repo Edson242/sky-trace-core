@@ -1,0 +1,28 @@
+// use prisma-next
+
+model Flight {
+  id            String     @id
+  originCountry String
+  category      Int        @default(0)
+  alerts        AlertLog[]
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@map("flights")
+}
+
+model AlertLog {
+  id          String     @id @default(uuid())
+  flightId    String
+  threatLevel String
+  lat         Float
+  lng         Float
+  windSpeed   Float?
+  condition   String?
+  squawk      String?
+  createdAt   TimestamptzString @default(now())
+
+  flight      Flight     @relation(fields:[flightId], references:[id])
+
+  @@map("alert_logs")
+}
