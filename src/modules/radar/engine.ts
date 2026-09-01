@@ -32,6 +32,13 @@ export function startRadarEngine(io: Server): void {
       const risk = await evaluateFlightRisk(flight.id, flight.lat, flight.lng);
       flight.threatLevel = flight.squawk === '7700' ? 'CRITICAL' : risk.threatLevel;
 
+      if (risk.environment) {
+        flight.environment = risk.environment;
+        if (flight.squawk === '7700') {
+           flight.environment.turbulenceIndex = 'PERIGOSO';
+        }
+      }
+
       if (risk.apiCalled) {
         weatherApiCallsToday++;
       }
