@@ -1,8 +1,0 @@
-{
-  "name": "SkyTrace Backend (tsx dev)",
-  "command": "npm run dev",
-  "dir": "",
-  "ports": [3000],
-  "readyUrl": "http://localhost:3000/health",
-  "readyTimeoutSec": 30
-}
