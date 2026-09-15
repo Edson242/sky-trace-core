@@ -32,7 +32,12 @@ export function startRadarEngine(io: Server): void {
       flights = JSON.parse(JSON.stringify(DADOS_MOCKADOS));
     }
 
-    await Promise.all(flights.map(async (flight) => {
+    for (const flight of flights) {
+      if (weatherApiCallsToday >= MAX_WEATHER_CALLS) {
+        console.log("⚠️ Limite diário de clima atingido.");
+        break; // Proteção para não estourar a cota gratuita
+      }
+
       const risk = await evaluateFlightRisk(flight.id, flight.lat, flight.lng);
       flight.threatLevel = flight.squawk === '7700' ? 'CRITICAL' : risk.threatLevel;
 
@@ -45,35 +50,37 @@ export function startRadarEngine(io: Server): void {
 
       if (risk.apiCalled) {
         weatherApiCallsToday++;
+        // Pausa de 100ms APENAS se fez requisição real na API (evita o Erro 429 - Too Many Requests)
+        await new Promise(res => setTimeout(res, 100)); 
       }
 
       const previousThreatLevel = lastThreatLevel.get(flight.id) ?? 'SAFE';
-      if (flight.threatLevel === previousThreatLevel) return;
+      if (flight.threatLevel !== previousThreatLevel) {
+        lastThreatLevel.set(flight.id, flight.threatLevel);
 
-      lastThreatLevel.set(flight.id, flight.threatLevel);
+        if (flight.threatLevel === 'WARNING' || flight.threatLevel === 'CRITICAL') {
+          try {
+            await db.orm.public.Flight.upsert({
+              create: { id: flight.id, originCountry: flight.originCountry, category: flight.category },
+              update: { originCountry: flight.originCountry, category: flight.category }
+            });
 
-      if (flight.threatLevel === 'WARNING' || flight.threatLevel === 'CRITICAL') {
-        try {
-          await db.orm.public.Flight.upsert({
-            create: { id: flight.id, originCountry: flight.originCountry, category: flight.category },
-            update: { originCountry: flight.originCountry, category: flight.category }
-          });
-
-          await db.orm.public.AlertLog.create({
-            id: crypto.randomUUID(),
-            flightId: flight.id,
-            threatLevel: flight.threatLevel,
-            lat: flight.lat,
-            lng: flight.lng,
-            windSpeed: risk.windSpeed,
-            condition: risk.condition,
-            squawk: flight.squawk
-          });
-        } catch (dbError) {
-          console.error(`[DB ERRO] Falha ao salvar auditoria do voo ${flight.id}:`, dbError);
+            await db.orm.public.AlertLog.create({
+              id: crypto.randomUUID(),
+              flightId: flight.id,
+              threatLevel: flight.threatLevel,
+              lat: flight.lat,
+              lng: flight.lng,
+              windSpeed: risk.windSpeed,
+              condition: risk.condition,
+              squawk: flight.squawk
+            });
+          } catch (dbError) {
+            console.error(`[DB ERRO] Falha ao salvar auditoria do voo ${flight.id}:`, dbError);
+          }
         }
       }
-    }));
+    }
 
     const payload: RadarUpdatePayload = {
       timestamp: Date.now(),
