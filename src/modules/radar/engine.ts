@@ -24,6 +24,10 @@ export function startRadarEngine(io: Server): void {
 
     if (USE_REAL_DATA) {
       flights = await fetchRealFlights();
+      if (flights.length === 0) {
+        console.log("⚠️ [Radar] API do OpenSky falhou ou retornou vazio. Usando fallback de dados mockados.");
+        flights = JSON.parse(JSON.stringify(DADOS_MOCKADOS));
+      }
     } else {
       flights = JSON.parse(JSON.stringify(DADOS_MOCKADOS));
     }

@@ -1,5 +1,10 @@
 import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { Flight } from '../socket/socket.types';
+
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+const httpsAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+
 
 const BRAZIL_BOX = {
   lamin: -33.7,
@@ -27,7 +32,8 @@ async function getAccessToken(): Promise<string | null> {
         client_secret: process.env.OPENSKY_CLIENT_SECRET as string
       }).toString(),
       {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        httpsAgent
       }
     );
 
@@ -53,7 +59,8 @@ export async function fetchRealFlights(): Promise<Flight[]> {
     const response = await axios.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
-      }
+      },
+      httpsAgent
     });
 
     const remainingHeader = response.headers['x-rate-limit-remaining'];
