@@ -15,7 +15,7 @@ interface CacheEntry {
 }
 
 const WEATHER_CACHE = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
+const CACHE_TTL_MS = 20 * 60 * 1000; // 20 minutos para poupar a cota da API
 
 export async function evaluateFlightRisk(flightId: string, lat: number, lng: number): Promise<{ threatLevel: ThreatLevel, apiCalled: boolean, windSpeed: number | null, condition: string | null, environment: EnvironmentData | null }> {
   const now = Date.now();
